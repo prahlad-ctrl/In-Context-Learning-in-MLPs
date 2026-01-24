@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.optim as optim
 import math
 
-lr = 3e-4
+lr = 3e-4 # magic value by andrej karpathy 😛 ( it actyually did do the work tho)
 epochs = 20000
 
 class InContextRegression:
@@ -15,15 +15,15 @@ class InContextRegression:
         a = torch.randn(self.batch_size, 1)
         b = torch.randn(self.batch_size, 1)
         x_all = torch.randn(self.batch_size, self.context_len + 1)
-        y_all = a* x_all+ b
+        y_all = a* x_all+ b # plain linear relation for this comp
 
         inputs = []
         for i in range(self.context_len):
-            inputs.append(x_all[:, i:i+1])
-            inputs.append(y_all[:, i:i+1])
+            inputs.append(x_all[:, i: i+1]) # dim(batch_size, 1) for both
+            inputs.append(y_all[:, i: i+1])
         inputs.append(x_all[:, -1:])
         
-        batch_x = torch.cat(inputs, dim=1)
+        batch_x = torch.cat(inputs, dim=1) # dim(batch_size, 2*context_len + 1)
         batch_y = y_all[:, -1:]
         
         return batch_x, batch_y
@@ -44,7 +44,7 @@ class InTransformer(nn.Module):
             norm_first=True
         )
         self.transformer_encoder = nn.TransformerEncoder(encoder_layer, num_layers=num_layers)
-        self.output_head = nn.Linear(d_model, 1)
+        self.output_head = nn.Linear(d_model, 1) # scaled ^y
 
     def forward(self, x):
         b, seq_len = x.shape
@@ -63,7 +63,7 @@ def train():
     model = InTransformer(d_model= 128, nhead= 4, num_layers= 4).to(device)
     optimizer = optim.AdamW(model.parameters(), lr=lr, weight_decay=0.0)
     criterion = nn.MSELoss()    
-    scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=1000, factor=0.5)
+    scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=1000, factor=0.5) # experimenting with this one, will decide 
 
     for i in range(epochs):
         x_batch, y_batch = task_gen.get_batch()
@@ -76,7 +76,7 @@ def train():
 
         optimizer.zero_grad()
         loss.backward()
-        torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+        torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0) # exploding gradients made me train multiple times 😓
         optimizer.step()
         
         real_loss = loss.item()*(scale_factor** 2)
@@ -101,7 +101,12 @@ def evaluate(model, device):
             total_loss += loss.item()
     return total_loss/ 100
 
-if __name__ == "__main__":
-    model, device = train()
-    final_loss = evaluate(model, device)
-    print(f"\nfinal loss: {final_loss:.4f}")
+model, device = train()
+final_loss = evaluate(model, device)
+print(f"\nfinal loss: {final_loss:.4f}")
+
+'''transformer implement in-context learning via attention-based, token-wise computation,
+whereas MLPs rely on parameterized memorization structure that simulate the task implicitly'''
+
+'''So is Attention necessary for in-context learning?
+NAHHH not really, but it provides a more flexible and generalizable mechanism compared to the MLPs'''
