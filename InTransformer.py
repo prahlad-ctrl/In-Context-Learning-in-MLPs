@@ -1,9 +1,8 @@
 import torch
 import torch.nn as nn
 import torch.optim as optim
-import math
 
-lr = 3e-4 # magic value by andrej karpathy 😛 ( it actyually did do the work tho)
+lr = 3e-4 # magic value by andrej karpathy (it actyually did do the work tho)
 epochs = 20000
 
 class InContextRegression:
@@ -11,10 +10,11 @@ class InContextRegression:
         self.batch_size = batch_size
         self.context_len = context_len
 
+    ' generating random values '
     def get_batch(self):
         a = torch.randn(self.batch_size, 1)
         b = torch.randn(self.batch_size, 1)
-        x_all = torch.randn(self.batch_size, self.context_len + 1)
+        x_all = torch.randn(self.batch_size, self.context_len + 1) # all examples + query point
         y_all = a* x_all+ b # plain linear relation for this comp
 
         inputs = []
@@ -32,14 +32,13 @@ class InTransformer(nn.Module):
     def __init__(self, input_dim=1, d_model=128, nhead=4, num_layers=4, max_len=50):
         super().__init__()
         self.input_proj = nn.Linear(input_dim, d_model)
-        self.pos_embedding = nn.Parameter(torch.randn(1, max_len, d_model))
-        
+        self.pos_embedding = nn.Parameter(torch.randn(1, max_len, d_model))        
         encoder_layer = nn.TransformerEncoderLayer(
             d_model=d_model,
             nhead=nhead,
             dim_feedforward=512,
             dropout=0.0,
-            activation="gelu",
+            activation="gelu", # works better than relu for transformers, though in actual paper relu is used ig
             batch_first=True,
             norm_first=True
         )
@@ -47,7 +46,7 @@ class InTransformer(nn.Module):
         self.output_head = nn.Linear(d_model, 1) # scaled ^y
 
     def forward(self, x):
-        b, seq_len = x.shape
+        batch_size, seq_len = x.shape
         x = x.unsqueeze(-1)
         x = self.input_proj(x)
         x = x + self.pos_embedding[:, :seq_len, :]
@@ -76,7 +75,7 @@ def train():
 
         optimizer.zero_grad()
         loss.backward()
-        torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0) # exploding gradients made me train multiple times 😓
+        torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0) # exploding gradients made me train multiple times
         optimizer.step()
         
         real_loss = loss.item()*(scale_factor** 2)

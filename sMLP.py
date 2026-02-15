@@ -65,7 +65,7 @@ def train():
     return model, losses
 
 def stress_test(model):    
-    def run(mod= "base", len= 100):
+    def run(mod= "base", len= 100): # normal order
         total_loss = 0
         for i in range(len):
             a = torch.randn(batch_size, 1)
@@ -74,14 +74,14 @@ def stress_test(model):
             y_all = a* x_all+ b
             
             inputs = []
-            if mod == "shuffle":
+            if mod == "shuffle": # random order
                 indices = torch.randperm(context_len)
                 for i in indices:
                     inputs.append(x_all[:, i:i+1])
                     inputs.append(y_all[:, i:i+1])
                 inputs.append(x_all[:, -1:])
                 
-            elif mod == "query_shift":
+            elif mod == "query_shift": # query at start
                 inputs.append(x_all[:, -1:])
                 for i in range(context_len):
                     inputs.append(x_all[:, i:i+1])
